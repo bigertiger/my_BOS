@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:cache="http://www.springframework.org/schema/cache"
+	xsi:schemaLocation="
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/cache
+		http://www.springframework.org/schema/cache/spring-cache.xsd">
+
+	<!-- 配置shiroFilter的本体 -->
+	<bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+		<!-- 引入配置安全管理器 -->
+		<property name="securityManager" ref="securityManager"></property>
+		<!-- 配置验证成功页面 -->
+		<property name="successUrl" value="/index.html"></property>
+		<!-- 配置验证失败页面 -->
+		<property name="loginUrl" value="/login.html"></property>
+		<!-- 配置权限不足页面 -->
+		<property name="unauthorizedUrl" value="/unauthorized.html"></property>
+		<!-- 配置匹配规则 -->
+		<property name="filterChainDefinitions">
+			<value>
+				/login.html* = anon
+				/user_login.action* = anon
+				/validatecode.jsp* = anon
+				/css/** = anon
+				/js/** = anon
+				/images/** = anon
+				/services/** = anon
+				/pages/base/courier.html* = perms[courier:list]
+				/pages/base/area.html* = roles[base]
+				/** = authc
+			</value>
+		</property>
+	</bean>
+
+	<bean id="bosRealm" class="com.zy.bos.service.system.BosRealm">
+		<property name="authorizationCacheName" value="bos"></property>
+	</bean>
+
+	<!--spring与ehcache整合产生的缓存管理器工厂-->
+	<bean id="ehcacheManager"
+		  class="org.springframework.cache.ehcache.EhCacheManagerFactoryBean">
+		<property name="configLocation" value="classpath:ehcache.xml"/>
+	</bean>
+
+	<!--对普通数据进行缓存操作要用的springcacheManager-->
+	<bean id="springCacheManager"
+		class="org.springframework.cache.ehcache.EhCacheCacheManager">
+		<property name="cacheManager" ref="ehcacheManager"/>
+	</bean>
+
+	<!--开启缓存注解支持-->
+	<cache:annotation-driven cache-manager="springCacheManager"/>
+
+	<!--配置shiro的缓存管理器-->
+	<bean id="shiroCacheManager" class="org.apache.shiro.cache.ehcache.EhCacheManager">
+		<property name="cacheManager" ref="ehcacheManager"/>
+	</bean>
+
+	<!-- 引入配置安全管理器 -->
+	<bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+		<property name="realm" ref="bosRealm"></property>
+		<property name="cacheManager" ref="shiroCacheManager"/>
+	</bean>
+	
+	<!--引入注解鉴权-->
+	<bean
+        class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator">
+		<property name="proxyTargetClass" value="true"/>
+	</bean>
+
+	<!--配置通知类-->
+	<bean
+		class="org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor">
+		<property name="securityManager" ref="securityManager"/>
+	</bean>
+	
+	
+</beans>
